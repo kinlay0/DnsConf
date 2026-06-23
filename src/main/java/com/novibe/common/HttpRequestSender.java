@@ -67,17 +67,13 @@ public abstract class HttpRequestSender {
             requestBody = HttpRequest.BodyPublishers.ofString(body.toJson());
         }
         semaphore.acquire();
-        Thread.sleep(1000);
-        
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .header(authHeaderName(), authHeaderValue())
                 .header("Content-Type", "application/json")
                 .method(method, requestBody)
                 .build();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        
         semaphore.release();
-        
         if (response.statusCode() > 299) {
             DnsHttpError httpError = new DnsHttpError(response, body);
             Log.fail(httpError.getMessage());
@@ -93,3 +89,4 @@ public abstract class HttpRequestSender {
         }
         return jsonMapper.fromJson(response.body(), responseBody);
     }
+}
