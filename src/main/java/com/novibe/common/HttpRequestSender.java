@@ -14,12 +14,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.Objects.isNull;
 
 public abstract class HttpRequestSender {
 
     private final Semaphore semaphore = new Semaphore(100);
+
+    private static final long MIN_REQUEST_INTERVAL_MS = 1000; // интервал 1 сек.
+    private final ReentrantLock rateLimitLock = new ReentrantLock();
+    private long lastRequestTimestamp = 0L;
 
     protected static final String GET = "GET";
     protected static final String POST = "POST";
@@ -66,6 +71,7 @@ public abstract class HttpRequestSender {
         } else {
             requestBody = HttpRequest.BodyPublishers.ofString(body.toJson());
         }
+        awaitRateLimit();
         semaphore.acquire();
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .header(authHeaderName(), authHeaderValue())
@@ -88,5 +94,20 @@ public abstract class HttpRequestSender {
             return null;
         }
         return jsonMapper.fromJson(response.body(), responseBody);
+    }
+
+    private void awaitRateLimit() throws InterruptedException {
+        rateLimitLock.lock();
+        try {
+            long now = System.currentTimeMillis();
+            long elapsedSinceLast = now - lastRequestTimestamp;
+            long waitTime = MIN_REQUEST_INTERVAL_MS - elapsedSinceLast;
+            if (waitTime > 0) {
+                Thread.sleep(waitTime);
+            }
+            lastRequestTimestamp = System.currentTimeMillis();
+        } finally {
+            rateLimitLock.unlock();
+        }
     }
 }
