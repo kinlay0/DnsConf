@@ -22,7 +22,7 @@ public abstract class HttpRequestSender {
 
     private final Semaphore semaphore = new Semaphore(100);
 
-    private static final long MIN_REQUEST_INTERVAL_MS = 1000; // интервал 1 сек.
+    private static final long MIN_REQUEST_INTERVAL_MS = 200; // интервал 0.2 сек.
     private final ReentrantLock rateLimitLock = new ReentrantLock();
     private long lastRequestTimestamp = 0L;
 
